@@ -1,0 +1,17 @@
+{
+  "name": "demo-customer-agent",
+  "version": "1.0.0",
+  "description": "AI Customer Service Agent — answers questions from your knowledge base",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "demo": "tsx src/demo.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

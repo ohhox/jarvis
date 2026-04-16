@@ -1,0 +1,16 @@
+{
+  "name": "demo-multi-agent",
+  "version": "1.0.0",
+  "description": "Multi-agent content production system — research, write, review, publish",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/demo.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

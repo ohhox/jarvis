@@ -1,0 +1,16 @@
+{
+  "name": "demo-workflow-automation",
+  "version": "1.0.0",
+  "description": "AI-powered lead processing and email classification automation",
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/demo.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}
