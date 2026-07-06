@@ -78,6 +78,8 @@ async function loadReport() {
       <div class="card stat"><div class="n" style="color:var(--red)">${summary.out_of_range}</div><div class="l">นอกพื้นที่</div></div>
       <div class="card stat"><div class="n" style="color:var(--muted)">${summary.not_checked_in}</div><div class="l">ยังไม่เช็คอิน</div></div>`;
 
+    drawCheckinMap(rows); // วาดแผนที่เช็คอิน (แสดงขอบเขต+หมุด แม้ยังไม่มีคนเช็คอิน)
+
     const tbody = document.querySelector('#report-table tbody');
     if (!rows.length) {
       tbody.innerHTML = '<tr><td colspan="7" class="muted">ยังไม่มีนักเรียนลงทะเบียน</td></tr>';
@@ -90,13 +92,13 @@ async function loadReport() {
         else if (r.status === 'out_of_range') pill = '<span class="pill red">นอกพื้นที่</span>';
         const dist = r.distance_m != null ? `${r.distance_m} ม.` : '-';
         return `<tr>
-          <td>${r.student_code}</td>
-          <td>${r.full_name}</td>
-          <td>${r.class_room || '-'}</td>
+          <td>${esc(r.student_code)}</td>
+          <td>${esc(r.full_name)}</td>
+          <td>${esc(r.class_room) || '-'}</td>
           <td>${pill}</td>
           <td>${fmtDateTime(r.checked_at)}</td>
           <td>${dist}</td>
-          <td>${r.guardian_phone || '-'}</td>
+          <td>${esc(r.guardian_phone) || '-'}</td>
         </tr>`;
       })
       .join('');
@@ -106,39 +108,70 @@ async function loadReport() {
 }
 
 // ===== Zones + Map =====
-let map, marker, circle, editingId = null;
+let map, marker, circle, polyLayer, editingId = null;
 let mapTried = false;
+let zoneMode = 'circle';
+let polygonPts = []; // [[lat,lng],...]
 
 function initMap() {
   if (map || mapTried) return;
   mapTried = true;
-  // ถ้าโหลด Leaflet ไม่สำเร็จ (เช่น เน็ตบล็อก CDN) → ยังกรอกพิกัดมือได้
   if (typeof L === 'undefined') {
     document.getElementById('map').innerHTML =
-      '<div style="padding:24px;text-align:center;color:var(--muted)">แผนที่โหลดไม่ได้ (เชื่อมต่ออินเทอร์เน็ตไม่ได้) — กรอก Latitude/Longitude ด้านล่างหรือกด "ใช้ตำแหน่งฉัน" ได้เลย</div>';
+      '<div style="padding:24px;text-align:center;color:var(--muted)">แผนที่โหลดไม่ได้ (เชื่อมต่ออินเทอร์เน็ตไม่ได้) — กรอกพิกัดในช่องด้านล่างได้เลย</div>';
     return;
   }
   map = L.map('map').setView([13.7649, 100.5383], 15);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '© OpenStreetMap',
-    maxZoom: 19,
+    attribution: '© OpenStreetMap', maxZoom: 19,
   }).addTo(map);
-  map.on('click', (e) => setPoint(e.latlng.lat, e.latlng.lng));
-
-  document.getElementById('zone-radius').addEventListener('input', drawCircle);
-  document.getElementById('zone-lat').addEventListener('change', syncFromInputs);
-  document.getElementById('zone-lng').addEventListener('change', syncFromInputs);
+  map.on('click', (e) => {
+    if (zoneMode === 'polygon') addVertex(e.latlng.lat, e.latlng.lng);
+    else setPoint(e.latlng.lat, e.latlng.lng);
+  });
 }
 
+// ---- listeners ที่ไม่พึ่งแผนที่ (ผูกเสมอ ให้ fallback ทำงานได้) ----
+document.getElementById('zone-type').addEventListener('change', (e) => setZoneMode(e.target.value));
+document.getElementById('zone-radius').addEventListener('input', drawCircle);
+document.getElementById('zone-lat').addEventListener('change', syncFromInputs);
+document.getElementById('zone-lng').addEventListener('change', syncFromInputs);
+document.getElementById('polygon-points').addEventListener('input', () => {
+  polygonPts = parsePolygonText();
+  redrawPolygon();
+});
+document.getElementById('btn-clear-polygon').onclick = () => {
+  polygonPts = [];
+  document.getElementById('polygon-points').value = '';
+  redrawPolygon();
+};
+
+function setZoneMode(mode) {
+  zoneMode = mode;
+  document.getElementById('zone-type').value = mode;
+  document.getElementById('circle-fields').classList.toggle('hidden', mode !== 'circle');
+  document.getElementById('polygon-fields').classList.toggle('hidden', mode !== 'polygon');
+  document.getElementById('zone-hint').textContent = mode === 'polygon'
+    ? 'คลิกบนแผนที่เพื่อเพิ่มจุดมุมทีละจุด (อย่างน้อย 3 จุด)'
+    : 'คลิกบนแผนที่เพื่อวางจุดศูนย์กลาง แล้วปรับรัศมี';
+  if (!map) return;
+  if (mode === 'polygon') {
+    if (marker) { map.removeLayer(marker); marker = null; }
+    if (circle) { map.removeLayer(circle); circle = null; }
+  } else if (polyLayer) {
+    map.removeLayer(polyLayer); polyLayer = null;
+  }
+}
+
+// ---- วงกลม ----
 function setPoint(lat, lng) {
   document.getElementById('zone-lat').value = lat.toFixed(6);
   document.getElementById('zone-lng').value = lng.toFixed(6);
-  if (!map) return; // ไม่มีแผนที่ก็แค่กรอกค่าในช่อง
+  if (!map) return;
   if (marker) marker.setLatLng([lat, lng]);
   else marker = L.marker([lat, lng]).addTo(map);
   drawCircle();
 }
-
 function syncFromInputs() {
   const lat = parseFloat(document.getElementById('zone-lat').value);
   const lng = parseFloat(document.getElementById('zone-lng').value);
@@ -147,7 +180,6 @@ function syncFromInputs() {
     if (map) map.setView([lat, lng]);
   }
 }
-
 function drawCircle() {
   if (!map) return;
   const lat = parseFloat(document.getElementById('zone-lat').value);
@@ -158,11 +190,46 @@ function drawCircle() {
   else circle = L.circle([lat, lng], { radius, color: '#06c755' }).addTo(map);
 }
 
+// ---- polygon ----
+function addVertex(lat, lng) {
+  polygonPts.push([lat, lng]);
+  syncPolygonText();
+  redrawPolygon();
+}
+function parsePolygonText() {
+  const pts = [];
+  for (const line of document.getElementById('polygon-points').value.split('\n')) {
+    const m = line.trim().split(',');
+    if (m.length !== 2) continue;
+    const lat = parseFloat(m[0]), lng = parseFloat(m[1]);
+    if (Number.isFinite(lat) && Number.isFinite(lng)) pts.push([lat, lng]);
+  }
+  return pts;
+}
+function syncPolygonText() {
+  document.getElementById('polygon-points').value =
+    polygonPts.map((p) => `${p[0].toFixed(6)},${p[1].toFixed(6)}`).join('\n');
+  updatePolygonCount();
+}
+function updatePolygonCount() {
+  document.getElementById('polygon-count').textContent = `${polygonPts.length} จุด`;
+}
+function redrawPolygon() {
+  updatePolygonCount();
+  if (!map) return;
+  if (polyLayer) { map.removeLayer(polyLayer); polyLayer = null; }
+  if (polygonPts.length >= 2) {
+    polyLayer = L.polygon(polygonPts, { color: '#06c755' }).addTo(map);
+  }
+}
+
 document.getElementById('btn-mylocation').onclick = () => {
   if (!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition((pos) => {
-    setPoint(pos.coords.latitude, pos.coords.longitude);
-    if (map) map.setView([pos.coords.latitude, pos.coords.longitude], 16);
+    const { latitude: lat, longitude: lng } = pos.coords;
+    if (zoneMode === 'polygon') addVertex(lat, lng);
+    else setPoint(lat, lng);
+    if (map) map.setView([lat, lng], 16);
   });
 };
 
@@ -172,22 +239,26 @@ document.getElementById('btn-cancelzone').onclick = resetZoneForm;
 async function saveZone() {
   const errEl = document.getElementById('zone-err');
   errEl.textContent = '';
-  const body = {
-    name: document.getElementById('zone-name').value.trim(),
-    center_lat: parseFloat(document.getElementById('zone-lat').value),
-    center_lng: parseFloat(document.getElementById('zone-lng').value),
-    radius_m: parseFloat(document.getElementById('zone-radius').value),
-  };
-  if (!body.name) return (errEl.textContent = 'กรุณาตั้งชื่อพื้นที่');
-  if (!Number.isFinite(body.center_lat) || !Number.isFinite(body.center_lng)) {
-    return (errEl.textContent = 'กรุณาเลือกจุดบนแผนที่');
+  const name = document.getElementById('zone-name').value.trim();
+  if (!name) return (errEl.textContent = 'กรุณาตั้งชื่อพื้นที่');
+
+  let body;
+  if (zoneMode === 'polygon') {
+    const pts = polygonPts.length ? polygonPts : parsePolygonText();
+    if (pts.length < 3) return (errEl.textContent = 'รูปหลายเหลี่ยมต้องมีอย่างน้อย 3 จุด');
+    body = { name, type: 'polygon', polygon: pts };
+  } else {
+    const lat = parseFloat(document.getElementById('zone-lat').value);
+    const lng = parseFloat(document.getElementById('zone-lng').value);
+    const radius = parseFloat(document.getElementById('zone-radius').value);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      return (errEl.textContent = 'กรุณาเลือกจุดบนแผนที่ หรือกรอกพิกัด');
+    }
+    body = { name, type: 'circle', center_lat: lat, center_lng: lng, radius_m: radius };
   }
   try {
-    if (editingId) {
-      await api(`/zones/${editingId}`, { method: 'PUT', body, tokenKey: TOKEN_KEY });
-    } else {
-      await api('/zones', { method: 'POST', body, tokenKey: TOKEN_KEY });
-    }
+    if (editingId) await api(`/zones/${editingId}`, { method: 'PUT', body, tokenKey: TOKEN_KEY });
+    else await api('/zones', { method: 'POST', body, tokenKey: TOKEN_KEY });
     resetZoneForm();
     loadZones();
   } catch (err) {
@@ -202,9 +273,15 @@ function resetZoneForm() {
   document.getElementById('zone-radius').value = '200';
   document.getElementById('zone-lat').value = '';
   document.getElementById('zone-lng').value = '';
+  document.getElementById('polygon-points').value = '';
+  polygonPts = [];
   document.getElementById('btn-cancelzone').classList.add('hidden');
-  if (marker) { map.removeLayer(marker); marker = null; }
-  if (circle) { map.removeLayer(circle); circle = null; }
+  if (map) {
+    if (marker) { map.removeLayer(marker); marker = null; }
+    if (circle) { map.removeLayer(circle); circle = null; }
+    if (polyLayer) { map.removeLayer(polyLayer); polyLayer = null; }
+  }
+  setZoneMode('circle');
 }
 
 async function loadZones() {
@@ -219,10 +296,13 @@ async function loadZones() {
       const badge = z.active
         ? '<span class="pill green">ใช้งาน</span>'
         : '<span class="pill gray">ปิด</span>';
+      const shape = z.type === 'polygon'
+        ? `รูปหลายเหลี่ยม · ${JSON.parse(z.polygon || '[]').length} จุด`
+        : `วงกลม · รัศมี ${z.radius_m} ม. · ${z.center_lat.toFixed(5)}, ${z.center_lng.toFixed(5)}`;
       return `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)">
         <div>
-          <strong>${z.name}</strong> ${badge}<br/>
-          <span class="muted">รัศมี ${z.radius_m} ม. · ${z.center_lat.toFixed(5)}, ${z.center_lng.toFixed(5)}</span>
+          <strong>${esc(z.name)}</strong> ${badge}<br/>
+          <span class="muted">${shape}</span>
         </div>
         <div style="display:flex;gap:8px;flex:0 0 auto">
           <button class="btn small secondary" data-edit="${z.id}">แก้ไข</button>
@@ -256,11 +336,76 @@ function editZone(z) {
   editingId = z.id;
   document.getElementById('zone-form-title').textContent = `แก้ไข: ${z.name}`;
   document.getElementById('zone-name').value = z.name;
-  document.getElementById('zone-radius').value = z.radius_m;
   document.getElementById('btn-cancelzone').classList.remove('hidden');
-  setPoint(z.center_lat, z.center_lng);
-  if (map) map.setView([z.center_lat, z.center_lng], 16);
+  if (z.type === 'polygon') {
+    setZoneMode('polygon');
+    polygonPts = JSON.parse(z.polygon || '[]');
+    syncPolygonText();
+    redrawPolygon();
+    if (map && polyLayer) map.fitBounds(polyLayer.getBounds(), { padding: [30, 30] });
+  } else {
+    setZoneMode('circle');
+    document.getElementById('zone-radius').value = z.radius_m;
+    setPoint(z.center_lat, z.center_lng);
+    if (map) map.setView([z.center_lat, z.center_lng], 16);
+  }
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===== แผนที่การเช็คอิน (ในแท็บรายงาน) =====
+let cmap, cmapTried = false, cmapLayers = [];
+
+function initCheckinMap() {
+  if (cmap || cmapTried) return;
+  cmapTried = true;
+  if (typeof L === 'undefined') {
+    document.getElementById('checkin-map').innerHTML =
+      '<div style="padding:24px;text-align:center;color:var(--muted)">แผนที่โหลดไม่ได้ (เชื่อมต่ออินเทอร์เน็ตไม่ได้)</div>';
+    return;
+  }
+  cmap = L.map('checkin-map').setView([13.7649, 100.5383], 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap', maxZoom: 19,
+  }).addTo(cmap);
+}
+
+async function drawCheckinMap(rows) {
+  initCheckinMap();
+  if (!cmap) return;
+  cmapLayers.forEach((l) => cmap.removeLayer(l));
+  cmapLayers = [];
+
+  // ขอบเขตพื้นที่ที่กำหนด
+  try {
+    const { zones } = await api('/zones', { tokenKey: TOKEN_KEY });
+    zones.filter((z) => z.active).forEach((z) => {
+      const style = { color: '#06c755', weight: 2, fillOpacity: 0.08 };
+      const layer = z.type === 'polygon' && z.polygon
+        ? L.polygon(JSON.parse(z.polygon), style)
+        : L.circle([z.center_lat, z.center_lng], { radius: z.radius_m, ...style });
+      layer.addTo(cmap);
+      cmapLayers.push(layer);
+    });
+  } catch { /* ignore */ }
+
+  // หมุดนักเรียนที่เช็คอิน
+  const pts = [];
+  rows.filter((r) => r.lat != null && r.status).forEach((r) => {
+    const inRange = r.status === 'in_range';
+    const m = L.circleMarker([r.lat, r.lng], {
+      radius: 8, color: '#fff', weight: 2,
+      fillColor: inRange ? '#06c755' : '#e5484d', fillOpacity: 1,
+    });
+    m.bindPopup(
+      `<b>${esc(r.full_name)}</b><br>${inRange ? '🟢 อยู่ในพื้นที่' : '🔴 นอกพื้นที่'} · ${r.distance_m} ม.`,
+    );
+    m.addTo(cmap);
+    cmapLayers.push(m);
+    pts.push([r.lat, r.lng]);
+  });
+
+  if (pts.length) cmap.fitBounds(pts, { padding: [40, 40], maxZoom: 17 });
+  setTimeout(() => cmap.invalidateSize(), 60);
 }
 
 // ===== Students (ตรวจสอบ/อนุมัติ) =====

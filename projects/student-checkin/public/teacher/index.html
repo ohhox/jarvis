@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ระบบเช็คอินนักเรียน — สำหรับครู</title>
   <link rel="stylesheet" href="/shared/style.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css" />
 </head>
 <body>
   <!-- Login -->
@@ -49,6 +49,11 @@
           <input type="date" id="report-date" style="width:auto" />
         </div>
         <div class="row" id="report-stats"></div>
+      </div>
+      <div class="card">
+        <h2>🗺️ แผนที่การเช็คอิน</h2>
+        <p class="muted">🟢 อยู่ในพื้นที่ · 🔴 นอกพื้นที่ · เส้นเขียว = ขอบเขตที่กำหนด</p>
+        <div id="checkin-map"></div>
       </div>
       <div class="card">
         <div style="overflow-x:auto">
@@ -107,23 +112,43 @@
     <div id="panel-zones" class="hidden">
       <div class="card">
         <h2 id="zone-form-title">เพิ่มพื้นที่เช็คอินใหม่</h2>
-        <p class="muted">คลิกบนแผนที่เพื่อวางจุดศูนย์กลาง แล้วปรับรัศมี</p>
-        <div id="map"></div>
-        <div class="row" style="margin-top:14px">
+        <div class="row">
           <div>
             <label>ชื่อพื้นที่</label>
             <input id="zone-name" placeholder="เช่น หน้าโรงเรียน" />
           </div>
-          <div style="flex:0 0 140px">
-            <label>รัศมี (เมตร)</label>
-            <input id="zone-radius" type="number" value="200" min="10" />
+          <div style="flex:0 0 200px">
+            <label>ประเภทพื้นที่</label>
+            <select id="zone-type">
+              <option value="circle">วงกลม (จุด + รัศมี)</option>
+              <option value="polygon">รูปหลายเหลี่ยม (polygon)</option>
+            </select>
           </div>
         </div>
-        <div class="row">
-          <div><label>Latitude</label><input id="zone-lat" /></div>
-          <div><label>Longitude</label><input id="zone-lng" /></div>
+        <p class="muted" id="zone-hint">คลิกบนแผนที่เพื่อวางจุดศูนย์กลาง แล้วปรับรัศมี</p>
+        <div id="map"></div>
+
+        <!-- circle fields -->
+        <div id="circle-fields">
+          <div class="row" style="margin-top:14px">
+            <div style="flex:0 0 160px">
+              <label>รัศมี (เมตร)</label>
+              <input id="zone-radius" type="number" value="200" min="10" />
+            </div>
+            <div><label>Latitude</label><input id="zone-lat" /></div>
+            <div><label>Longitude</label><input id="zone-lng" /></div>
+          </div>
         </div>
-        <div class="row">
+
+        <!-- polygon fields -->
+        <div id="polygon-fields" class="hidden">
+          <label>จุดมุม (คลิกแผนที่เพิ่มจุด หรือพิมพ์ บรรทัดละ <code>lat,lng</code>)</label>
+          <textarea id="polygon-points" rows="5" placeholder="13.7650,100.5380&#10;13.7660,100.5380&#10;13.7660,100.5390"></textarea>
+          <div class="muted" id="polygon-count">0 จุด</div>
+          <button class="btn small secondary" id="btn-clear-polygon" style="margin-top:8px">ล้างจุดทั้งหมด</button>
+        </div>
+
+        <div class="row" style="margin-top:8px">
           <button class="btn small secondary" id="btn-mylocation" style="flex:0 0 auto">📍 ใช้ตำแหน่งฉัน</button>
           <button class="btn" id="btn-savezone">บันทึกพื้นที่</button>
           <button class="btn small secondary hidden" id="btn-cancelzone" style="flex:0 0 auto">ยกเลิกแก้ไข</button>
@@ -138,7 +163,7 @@
     </div>
   </section>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/vendor/leaflet/leaflet.js"></script>
   <script type="module" src="/teacher/app.js"></script>
 </body>
 </html>

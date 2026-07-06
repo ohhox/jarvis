@@ -13,12 +13,16 @@ export interface Student {
   created_at: string;
 }
 
+export type ZoneType = 'circle' | 'polygon';
+
 export interface Zone {
   id: number;
   name: string;
+  type: ZoneType;
   center_lat: number;
   center_lng: number;
   radius_m: number;
+  polygon: string | null; // JSON [[lat,lng],...] เมื่อ type=polygon
   active: number; // 0 | 1
   created_at: string;
 }

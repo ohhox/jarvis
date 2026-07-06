@@ -1,8 +1,29 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { requireRole } from '../lib/middleware.js';
-import { checkAgainstCircle, isValidLatLng } from '../lib/geo.js';
+import {
+  checkAgainstCircle,
+  isValidLatLng,
+  pointInPolygon,
+  distanceToPolygonMeters,
+  type LatLng,
+} from '../lib/geo.js';
 import type { Student, Zone } from '../types.js';
+
+/** ประเมินว่าจุดอยู่ในพื้นที่ (วงกลมหรือ polygon) + ระยะห่าง */
+function evaluateZone(lat: number, lng: number, zone: Zone): { inside: boolean; distance_m: number } {
+  if (zone.type === 'polygon' && zone.polygon) {
+    let poly: LatLng[];
+    try {
+      poly = JSON.parse(zone.polygon);
+    } catch {
+      return { inside: false, distance_m: Infinity };
+    }
+    const inside = pointInPolygon(lat, lng, poly);
+    return { inside, distance_m: inside ? 0 : distanceToPolygonMeters(lat, lng, poly) };
+  }
+  return checkAgainstCircle(lat, lng, zone);
+}
 
 export const checkinRouter = Router();
 
@@ -47,7 +68,7 @@ checkinRouter.post('/', requireRole('student'), (req, res) => {
   // ประเมินทุกวง เลือกวงที่ "อยู่ใน" และใกล้ที่สุด; ถ้าไม่อยู่ในวงไหน เลือกวงที่ใกล้ที่สุด
   let best: { zone: Zone; distance_m: number; inside: boolean } | null = null;
   for (const zone of zones) {
-    const { inside, distance_m } = checkAgainstCircle(lat, lng, zone);
+    const { inside, distance_m } = evaluateZone(lat, lng, zone);
     if (
       best === null ||
       (inside && !best.inside) ||

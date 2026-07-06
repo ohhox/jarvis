@@ -38,15 +38,16 @@ h2 { font-size: 17px; margin: 0 0 12px; }
 .center { text-align: center; }
 
 label { display: block; font-size: 14px; font-weight: 600; margin: 14px 0 6px; }
-input, select {
+input, select, textarea {
   width: 100%;
   padding: 12px 14px;
   border: 1px solid var(--border);
   border-radius: 10px;
   font-size: 16px;
   background: #fff;
+  font-family: inherit;
 }
-input:focus, select:focus { outline: 2px solid var(--green); border-color: transparent; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--green); border-color: transparent; }
 
 .btn {
   display: block;
@@ -108,7 +109,7 @@ tr:hover td { background: #fafbfc; }
 .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .topbar h1 { font-size: 20px; }
 a.link { color: var(--green-dark); text-decoration: none; font-weight: 600; }
-#map { height: 320px; border-radius: 12px; border: 1px solid var(--border); }
+#map, #checkin-map { height: 360px; border-radius: 12px; border: 1px solid var(--border); }
 .err { color: var(--red); font-size: 14px; margin-top: 10px; min-height: 18px; }
 
 .modal-overlay {

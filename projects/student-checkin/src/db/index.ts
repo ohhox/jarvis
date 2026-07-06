@@ -27,9 +27,11 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS zones (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT NOT NULL,
-    center_lat  REAL NOT NULL,
+    type        TEXT NOT NULL DEFAULT 'circle',  -- circle | polygon
+    center_lat  REAL NOT NULL,                   -- circle=จุดศูนย์กลาง, polygon=centroid
     center_lng  REAL NOT NULL,
-    radius_m    REAL NOT NULL,
+    radius_m    REAL NOT NULL,                   -- circle เท่านั้น (polygon=0)
+    polygon     TEXT,                            -- polygon: JSON [[lat,lng],...]
     active      INTEGER NOT NULL DEFAULT 1,
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -75,4 +77,10 @@ if (!hasColumn('students', 'status')) {
 }
 if (!hasColumn('students', 'review_note')) {
   db.exec(`ALTER TABLE students ADD COLUMN review_note TEXT NOT NULL DEFAULT ''`);
+}
+if (!hasColumn('zones', 'type')) {
+  db.exec(`ALTER TABLE zones ADD COLUMN type TEXT NOT NULL DEFAULT 'circle'`);
+}
+if (!hasColumn('zones', 'polygon')) {
+  db.exec(`ALTER TABLE zones ADD COLUMN polygon TEXT`);
 }
