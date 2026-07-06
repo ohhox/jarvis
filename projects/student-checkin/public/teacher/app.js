@@ -38,15 +38,18 @@ document.getElementById('btn-logout').onclick = () => {
 };
 
 // ===== Tabs =====
+const PANELS = ['report', 'students', 'zones'];
 document.getElementById('tab-report').onclick = () => switchPanel('report');
+document.getElementById('tab-students').onclick = () => switchPanel('students');
 document.getElementById('tab-zones').onclick = () => switchPanel('zones');
 
 function switchPanel(name) {
-  document.getElementById('panel-report').classList.toggle('hidden', name !== 'report');
-  document.getElementById('panel-zones').classList.toggle('hidden', name !== 'zones');
-  document.getElementById('tab-report').classList.toggle('secondary', name !== 'report');
-  document.getElementById('tab-zones').classList.toggle('secondary', name !== 'zones');
+  for (const p of PANELS) {
+    document.getElementById(`panel-${p}`).classList.toggle('hidden', p !== name);
+    document.getElementById(`tab-${p}`).classList.toggle('secondary', p !== name);
+  }
   if (name === 'report') loadReport();
+  if (name === 'students') loadStudents();
   if (name === 'zones') {
     initMap();
     loadZones();
@@ -60,6 +63,7 @@ function enterDash() {
   dateEl.value = new Date().toISOString().slice(0, 10);
   dateEl.onchange = loadReport;
   // แผนที่ถูก init แบบ lazy ตอนเปิดแท็บ "พื้นที่เช็คอิน" เพื่อไม่ให้บล็อกรายงาน
+  refreshPendingBadge();
   switchPanel('report');
 }
 
@@ -257,6 +261,162 @@ function editZone(z) {
   setPoint(z.center_lat, z.center_lng);
   if (map) map.setView([z.center_lat, z.center_lng], 16);
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ===== Students (ตรวจสอบ/อนุมัติ) =====
+let studentFilter = 'all';
+let editingStudentId = null;
+
+const STATUS_PILL = {
+  pending: '<span class="pill gray">รอตรวจสอบ</span>',
+  approved: '<span class="pill green">อนุมัติแล้ว</span>',
+  rejected: '<span class="pill red">ปฏิเสธ</span>',
+};
+
+document.querySelectorAll('#panel-students [data-filter]').forEach((b) => {
+  b.onclick = () => {
+    studentFilter = b.dataset.filter;
+    loadStudents();
+  };
+});
+
+async function refreshPendingBadge() {
+  try {
+    const { summary } = await api('/manage/students?status=pending', { tokenKey: TOKEN_KEY });
+    const badge = document.getElementById('tab-pending-badge');
+    badge.textContent = summary.pending;
+    badge.classList.toggle('hidden', summary.pending === 0);
+  } catch {
+    /* ignore */
+  }
+}
+
+async function loadStudents() {
+  const q = studentFilter === 'all' ? '' : `?status=${studentFilter}`;
+  let data;
+  try {
+    data = await api(`/manage/students${q}`, { tokenKey: TOKEN_KEY });
+  } catch (err) {
+    if (String(err.message).includes('unauthorized')) show('login');
+    return;
+  }
+  const { students, summary } = data;
+
+  document.getElementById('students-summary').innerHTML = `
+    <div class="card stat"><div class="n">${summary.pending}</div><div class="l">รอตรวจสอบ</div></div>
+    <div class="card stat"><div class="n" style="color:var(--green)">${summary.approved}</div><div class="l">อนุมัติแล้ว</div></div>
+    <div class="card stat"><div class="n" style="color:var(--red)">${summary.rejected}</div><div class="l">ปฏิเสธ</div></div>`;
+
+  const badge = document.getElementById('tab-pending-badge');
+  badge.textContent = summary.pending;
+  badge.classList.toggle('hidden', summary.pending === 0);
+
+  const list = document.getElementById('students-list');
+  if (!students.length) {
+    list.innerHTML = '<p class="muted">ไม่มีนักเรียนในหมวดนี้</p>';
+    return;
+  }
+  list.innerHTML = students
+    .map((s) => {
+      const note = s.status === 'rejected' && s.review_note
+        ? `<div class="muted" style="color:var(--red)">เหตุผล: ${esc(s.review_note)}</div>`
+        : '';
+      const approveBtn = s.status !== 'approved'
+        ? `<button class="btn small" data-approve="${s.id}">อนุมัติ</button>` : '';
+      const rejectBtn = s.status !== 'rejected'
+        ? `<button class="btn small danger" data-reject="${s.id}">ปฏิเสธ</button>` : '';
+      return `<div class="student-card">
+        <div>
+          <div><strong>${esc(s.full_name)}</strong> ${STATUS_PILL[s.status]}</div>
+          <div class="muted">${esc(s.class_room) || '-'} · เลขที่ ${esc(s.student_code)}</div>
+          <div class="muted">โทร ${esc(s.phone) || '-'} · ผู้ปกครอง ${esc(s.guardian_phone) || '-'}</div>
+          ${note}
+        </div>
+        <div class="actions">
+          ${approveBtn}
+          ${rejectBtn}
+          <button class="btn small secondary" data-edits="${s.id}">แก้ไข</button>
+          <button class="btn small secondary" data-dels="${s.id}">ลบ</button>
+        </div>
+      </div>`;
+    })
+    .join('');
+
+  list.querySelectorAll('[data-approve]').forEach((b) => {
+    b.onclick = () => setStatus(Number(b.dataset.approve), 'approved');
+  });
+  list.querySelectorAll('[data-reject]').forEach((b) => {
+    b.onclick = () => rejectStudent(Number(b.dataset.reject));
+  });
+  list.querySelectorAll('[data-edits]').forEach((b) => {
+    b.onclick = () => openStudentModal(students.find((s) => s.id === Number(b.dataset.edits)));
+  });
+  list.querySelectorAll('[data-dels]').forEach((b) => {
+    b.onclick = async () => {
+      if (!confirm('ลบนักเรียนคนนี้และประวัติเช็คอินทั้งหมด?')) return;
+      await api(`/manage/students/${b.dataset.dels}`, { method: 'DELETE', tokenKey: TOKEN_KEY });
+      loadStudents();
+    };
+  });
+}
+
+async function setStatus(id, status, note) {
+  await api(`/manage/students/${id}/status`, {
+    method: 'POST',
+    body: { status, note },
+    tokenKey: TOKEN_KEY,
+  });
+  loadStudents();
+}
+
+function rejectStudent(id) {
+  const note = prompt('เหตุผลที่ปฏิเสธ (นักเรียนจะเห็นข้อความนี้):', 'ข้อมูลไม่ถูกต้อง');
+  if (note === null) return; // กดยกเลิก
+  setStatus(id, 'rejected', note);
+}
+
+// ----- edit modal -----
+function openStudentModal(s) {
+  editingStudentId = s.id;
+  document.getElementById('s-code').value = s.student_code;
+  document.getElementById('s-name').value = s.full_name;
+  document.getElementById('s-class').value = s.class_room;
+  document.getElementById('s-phone').value = s.phone;
+  document.getElementById('s-guardian').value = s.guardian_phone;
+  document.getElementById('s-err').textContent = '';
+  document.getElementById('student-modal').classList.remove('hidden');
+}
+
+document.getElementById('s-cancel').onclick = () =>
+  document.getElementById('student-modal').classList.add('hidden');
+
+document.getElementById('s-save').onclick = async () => {
+  const errEl = document.getElementById('s-err');
+  errEl.textContent = '';
+  const body = {
+    student_code: document.getElementById('s-code').value.trim(),
+    full_name: document.getElementById('s-name').value.trim(),
+    class_room: document.getElementById('s-class').value.trim(),
+    phone: document.getElementById('s-phone').value.trim(),
+    guardian_phone: document.getElementById('s-guardian').value.trim(),
+  };
+  if (!body.student_code || !body.full_name) {
+    errEl.textContent = 'ต้องกรอกเลขประจำตัวและชื่อ-สกุล';
+    return;
+  }
+  try {
+    await api(`/manage/students/${editingStudentId}`, { method: 'PUT', body, tokenKey: TOKEN_KEY });
+    document.getElementById('student-modal').classList.add('hidden');
+    loadStudents();
+  } catch (err) {
+    errEl.textContent = err.message;
+  }
+};
+
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"]/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
+  );
 }
 
 // ===== Boot =====

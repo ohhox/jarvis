@@ -19,6 +19,8 @@ db.exec(`
     class_room    TEXT NOT NULL DEFAULT '',
     phone         TEXT NOT NULL DEFAULT '',
     guardian_phone TEXT NOT NULL DEFAULT '',
+    status        TEXT NOT NULL DEFAULT 'pending',  -- pending | approved | rejected
+    review_note   TEXT NOT NULL DEFAULT '',         -- เหตุผลตอนปฏิเสธ / โน้ตจากครู
     created_at    TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
@@ -53,3 +55,15 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_checkins_student ON checkins(student_id);
   CREATE INDEX IF NOT EXISTS idx_checkins_checked_at ON checkins(checked_at);
 `);
+
+// ===== Migration: เพิ่มคอลัมน์ approval ให้ DB เก่าที่ยังไม่มี =====
+function hasColumn(table: string, column: string): boolean {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>;
+  return cols.some((c) => c.name === column);
+}
+if (!hasColumn('students', 'status')) {
+  db.exec(`ALTER TABLE students ADD COLUMN status TEXT NOT NULL DEFAULT 'pending'`);
+}
+if (!hasColumn('students', 'review_note')) {
+  db.exec(`ALTER TABLE students ADD COLUMN review_note TEXT NOT NULL DEFAULT ''`);
+}

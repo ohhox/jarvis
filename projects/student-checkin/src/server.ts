@@ -9,6 +9,7 @@ import { studentsRouter } from './routes/students.js';
 import { checkinRouter } from './routes/checkin.js';
 import { zonesRouter } from './routes/zones.js';
 import { reportsRouter } from './routes/reports.js';
+import { manageRouter } from './routes/manage.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -22,6 +23,7 @@ app.use('/api/students', studentsRouter);
 app.use('/api/checkin', checkinRouter);
 app.use('/api/zones', zonesRouter);
 app.use('/api/reports', reportsRouter);
+app.use('/api/manage', manageRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, mockMode: MOCK_MODE });

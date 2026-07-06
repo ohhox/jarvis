@@ -20,6 +20,18 @@ checkinRouter.post('/', requireRole('student'), (req, res) => {
     return res.status(403).json({ error: 'ยังไม่ได้ลงทะเบียน' });
   }
 
+  // approval gate: เช็คอินได้เฉพาะนักเรียนที่ครูอนุมัติแล้ว
+  if (student.status !== 'approved') {
+    return res.status(403).json({
+      error:
+        student.status === 'rejected'
+          ? `ข้อมูลไม่ถูกต้อง${student.review_note ? ': ' + student.review_note : ''} — กรุณาแก้ไขข้อมูล`
+          : 'ข้อมูลของคุณอยู่ระหว่างรอครูตรวจสอบและอนุมัติ',
+      status: student.status,
+      review_note: student.review_note,
+    });
+  }
+
   const { lat, lng } = req.body ?? {};
   if (!isValidLatLng(lat, lng)) {
     return res.status(400).json({ error: 'พิกัดไม่ถูกต้อง' });

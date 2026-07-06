@@ -30,6 +30,7 @@ reportsRouter.get('/daily', (req, res) => {
          ORDER BY c2.id DESC LIMIT 1
        )
        LEFT JOIN zones z ON z.id = c.zone_id
+       WHERE s.status = 'approved'
        ORDER BY s.class_room, s.student_code`,
     )
     .all(date) as Array<{ status: string | null }>;

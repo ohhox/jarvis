@@ -1,3 +1,5 @@
+export type StudentStatus = 'pending' | 'approved' | 'rejected';
+
 export interface Student {
   id: number;
   line_user_id: string;
@@ -6,6 +8,8 @@ export interface Student {
   class_room: string;
   phone: string;
   guardian_phone: string;
+  status: StudentStatus;
+  review_note: string;
   created_at: string;
 }
 

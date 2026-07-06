@@ -1,7 +1,7 @@
 import { api, setToken, getToken, clearToken, fmtDateTime } from '/shared/api.js';
 
 const TOKEN_KEY = 'student_token';
-const views = ['loading', 'mocklogin', 'register', 'checkin'];
+const views = ['loading', 'mocklogin', 'register', 'status', 'checkin'];
 function show(view) {
   for (const v of views) {
     document.getElementById(`view-${v}`).classList.toggle('hidden', v !== view);
@@ -15,7 +15,7 @@ async function boot() {
   if (getToken(TOKEN_KEY)) {
     try {
       const me = await api('/students/me', { tokenKey: TOKEN_KEY });
-      if (me.registered) return enterCheckin(me.student);
+      if (me.registered) return routeStudent(me.student);
       return enterRegister();
     } catch {
       clearToken(TOKEN_KEY); // token หมดอายุ/ไม่ถูกต้อง → login ใหม่
@@ -80,10 +80,37 @@ function onAuthed(res) {
   setToken(TOKEN_KEY, res.token);
   lineProfile = res.lineProfile;
   if (res.registered) {
-    enterCheckin(res.student);
+    routeStudent(res.student);
   } else {
     enterRegister();
   }
+}
+
+// ตัดสินใจว่าจะไปหน้าไหนตามสถานะการอนุมัติ
+function routeStudent(student) {
+  if (student.status === 'approved') enterCheckin(student);
+  else enterStatus(student);
+}
+
+function enterStatus(student) {
+  const rejected = student.status === 'rejected';
+  document.getElementById('status-emoji').textContent = rejected ? '❌' : '⏳';
+  document.getElementById('status-title').textContent = rejected
+    ? 'ข้อมูลไม่ถูกต้อง'
+    : 'รอครูตรวจสอบ';
+  const box = document.getElementById('status-box');
+  box.className = 'status ' + (rejected ? 'bad' : 'info');
+  box.textContent = rejected
+    ? (student.review_note
+        ? `ครูแจ้งว่า: ${student.review_note} — กรุณาแก้ไขข้อมูลให้ถูกต้อง`
+        : 'ครูตรวจแล้วพบว่าข้อมูลไม่ถูกต้อง — กรุณาแก้ไขข้อมูล')
+    : 'ข้อมูลของคุณถูกส่งให้ครูตรวจสอบแล้ว เมื่อครูอนุมัติจึงจะเช็คอินได้';
+  document.getElementById('status-data').innerHTML = `
+    <div class="muted" style="font-size:13px">ข้อมูลที่ลงทะเบียนไว้</div>
+    <div><strong>${student.full_name}</strong></div>
+    <div>${student.class_room || '-'} · เลขที่ ${student.student_code}</div>`;
+  document.getElementById('btn-status-edit').onclick = () => enterRegister(student);
+  show('status');
 }
 
 function enterRegister(prefill) {
@@ -122,7 +149,7 @@ async function submitRegister() {
       tokenKey: TOKEN_KEY,
     });
     setToken(TOKEN_KEY, res.token);
-    enterCheckin(res.student);
+    routeStudent(res.student);
   } catch (err) {
     errEl.textContent = err.message;
   }

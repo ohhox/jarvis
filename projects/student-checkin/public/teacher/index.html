@@ -35,6 +35,9 @@
     <!-- Tabs -->
     <div class="row" style="margin-bottom:16px">
       <button class="btn small secondary" id="tab-report">รายงานวันนี้</button>
+      <button class="btn small secondary" id="tab-students">
+        นักเรียน <span class="pill red hidden" id="tab-pending-badge">0</span>
+      </button>
       <button class="btn small secondary" id="tab-zones">พื้นที่เช็คอิน</button>
     </div>
 
@@ -58,6 +61,40 @@
             </thead>
             <tbody></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Students panel -->
+    <div id="panel-students" class="hidden">
+      <div class="card">
+        <div class="topbar">
+          <h2 style="margin:0">ตรวจสอบและอนุมัตินักเรียน</h2>
+        </div>
+        <div class="row" id="students-summary" style="margin-bottom:12px"></div>
+        <div class="row" style="margin-bottom:8px">
+          <button class="btn small secondary" data-filter="all">ทั้งหมด</button>
+          <button class="btn small secondary" data-filter="pending">รอตรวจสอบ</button>
+          <button class="btn small secondary" data-filter="approved">อนุมัติแล้ว</button>
+          <button class="btn small secondary" data-filter="rejected">ปฏิเสธ</button>
+        </div>
+        <div id="students-list"></div>
+      </div>
+    </div>
+
+    <!-- Student edit modal -->
+    <div id="student-modal" class="modal-overlay hidden">
+      <div class="modal">
+        <h2>แก้ไขข้อมูลนักเรียน</h2>
+        <label>เลขประจำตัว *</label><input id="s-code" />
+        <label>ชื่อ - นามสกุล *</label><input id="s-name" />
+        <label>ชั้น / ห้อง</label><input id="s-class" />
+        <label>เบอร์นักเรียน</label><input id="s-phone" />
+        <label>เบอร์ผู้ปกครอง</label><input id="s-guardian" />
+        <div class="err" id="s-err"></div>
+        <div class="row" style="margin-top:16px">
+          <button class="btn secondary" id="s-cancel">ยกเลิก</button>
+          <button class="btn" id="s-save">บันทึก</button>
         </div>
       </div>
     </div>

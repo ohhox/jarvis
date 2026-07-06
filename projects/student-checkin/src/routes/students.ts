@@ -31,8 +31,10 @@ studentsRouter.post('/register', requireRole('student'), (req, res) => {
     .get(lineUserId) as Student | undefined;
 
   if (existing) {
+    // นักเรียนแก้ข้อมูลเอง → กลับไปสถานะรอตรวจสอบใหม่ (กันแก้ข้อมูลหลบการอนุมัติ)
     db.prepare(
-      `UPDATE students SET student_code = ?, full_name = ?, class_room = ?, phone = ?, guardian_phone = ?
+      `UPDATE students SET student_code = ?, full_name = ?, class_room = ?, phone = ?, guardian_phone = ?,
+              status = 'pending', review_note = ''
        WHERE line_user_id = ?`,
     ).run(
       String(student_code),
