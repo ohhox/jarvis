@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db/index.js';
 import { requireRole } from '../lib/middleware.js';
+import { notifyStudent } from '../lib/notify.js';
 import type { Student, StudentStatus } from '../types.js';
 
 export const manageRouter = Router();
@@ -39,12 +40,18 @@ manageRouter.post('/students/:id/status', (req, res) => {
   const existing = db.prepare('SELECT * FROM students WHERE id = ?').get(id) as Student | undefined;
   if (!existing) return res.status(404).json({ error: 'ไม่พบนักเรียน' });
 
-  db.prepare('UPDATE students SET status = ?, review_note = ? WHERE id = ?').run(
-    status,
-    status === 'rejected' ? String(note ?? '') : '',
-    id,
+  const reason = status === 'rejected' ? String(note ?? '') : '';
+  db.prepare('UPDATE students SET status = ?, review_note = ? WHERE id = ?').run(status, reason, id);
+  const student = db.prepare('SELECT * FROM students WHERE id = ?').get(id) as Student;
+
+  // แจ้งนักเรียนผลการตรวจสอบ (fire-and-forget)
+  void notifyStudent(
+    existing.line_user_id,
+    status === 'approved'
+      ? '✅ ข้อมูลของคุณได้รับการอนุมัติแล้ว สามารถเช็คอินตำแหน่งก่อนกลับบ้านได้เลย'
+      : `❌ ข้อมูลของคุณยังไม่ถูกต้อง${reason ? ': ' + reason : ''} — กรุณาเปิดแอปเพื่อแก้ไขข้อมูลใหม่`,
   );
-  const student = db.prepare('SELECT * FROM students WHERE id = ?').get(id);
+
   res.json({ student });
 });
 
@@ -78,4 +85,12 @@ manageRouter.delete('/students/:id', (req, res) => {
   const id = Number(req.params.id);
   db.prepare('DELETE FROM students WHERE id = ?').run(id);
   res.json({ ok: true });
+});
+
+/** กล่องแจ้งเตือน (log การแจ้งเตือนล่าสุด) สำหรับครูดูในเว็บ */
+manageRouter.get('/notifications', (_req, res) => {
+  const notifications = db
+    .prepare('SELECT * FROM notifications ORDER BY id DESC LIMIT 50')
+    .all();
+  res.json({ notifications });
 });

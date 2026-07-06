@@ -49,7 +49,7 @@ function switchPanel(name) {
     document.getElementById(`tab-${p}`).classList.toggle('secondary', p !== name);
   }
   if (name === 'report') loadReport();
-  if (name === 'students') loadStudents();
+  if (name === 'students') { loadStudents(); loadNotifications(); }
   if (name === 'zones') {
     initMap();
     loadZones();
@@ -367,6 +367,36 @@ async function setStatus(id, status, note) {
     tokenKey: TOKEN_KEY,
   });
   loadStudents();
+  loadNotifications();
+}
+
+async function loadNotifications() {
+  let data;
+  try {
+    data = await api('/manage/notifications', { tokenKey: TOKEN_KEY });
+  } catch {
+    return;
+  }
+  const el = document.getElementById('notif-list');
+  if (!data.notifications.length) {
+    el.innerHTML = '<p class="muted">ยังไม่มีการแจ้งเตือน</p>';
+    return;
+  }
+  el.innerHTML = data.notifications
+    .slice(0, 10)
+    .map((n) => {
+      const who = n.target_type === 'admin'
+        ? '<span class="pill gray">ถึงครู</span>'
+        : '<span class="pill green">ถึงนักเรียน</span>';
+      const via = n.delivered
+        ? '<span class="pill green">ส่ง LINE แล้ว</span>'
+        : '<span class="pill gray">log</span>';
+      return `<div style="padding:8px 0;border-bottom:1px solid var(--border)">
+        <div>${who} ${via} <span class="muted" style="font-size:12px">${fmtDateTime(n.created_at)}</span></div>
+        <div>${esc(n.text)}</div>
+      </div>`;
+    })
+    .join('');
 }
 
 function rejectStudent(id) {

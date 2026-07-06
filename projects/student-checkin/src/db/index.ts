@@ -52,6 +52,15 @@ db.exec(`
     full_name     TEXT NOT NULL DEFAULT ''
   );
 
+  CREATE TABLE IF NOT EXISTS notifications (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    target_type TEXT NOT NULL,               -- 'student' | 'admin'
+    target      TEXT NOT NULL DEFAULT '',    -- line_user_id / admin target
+    text        TEXT NOT NULL,
+    delivered   INTEGER NOT NULL DEFAULT 0,  -- push ผ่าน LINE จริงสำเร็จไหม
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE INDEX IF NOT EXISTS idx_checkins_student ON checkins(student_id);
   CREATE INDEX IF NOT EXISTS idx_checkins_checked_at ON checkins(checked_at);
 `);

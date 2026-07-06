@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db/index.js';
 import { requireRole } from '../lib/middleware.js';
 import { signToken } from '../lib/auth.js';
+import { notifyAdmin } from '../lib/notify.js';
 import type { Student } from '../types.js';
 
 export const studentsRouter = Router();
@@ -61,6 +62,14 @@ studentsRouter.post('/register', requireRole('student'), (req, res) => {
   const student = db
     .prepare('SELECT * FROM students WHERE line_user_id = ?')
     .get(lineUserId) as Student;
+
+  // แจ้งครูว่ามีนักเรียนรออนุมัติ (fire-and-forget, ไม่บล็อก response)
+  const classText = student.class_room ? ` (${student.class_room})` : '';
+  void notifyAdmin(
+    existing
+      ? `📝 นักเรียนแก้ไขข้อมูลและรอตรวจสอบใหม่: ${student.full_name}${classText}`
+      : `🆕 มีนักเรียนใหม่รออนุมัติ: ${student.full_name}${classText} เลขที่ ${student.student_code}`,
+  );
 
   // ออก token ใหม่ที่มี student id แนบมาด้วย
   const token = signToken({ role: 'student', sub: lineUserId, id: student.id });

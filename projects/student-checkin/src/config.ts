@@ -29,6 +29,10 @@ export const config = {
   appSecret: process.env.APP_SECRET ?? 'dev-insecure-secret-change-me',
   liffId: process.env.LIFF_ID ?? '',
   lineLoginChannelId: process.env.LINE_LOGIN_CHANNEL_ID ?? '',
+  // Messaging API (สำหรับ push แจ้งเตือน) — คนละ channel กับ Login
+  lineMessagingToken: process.env.LINE_MESSAGING_TOKEN ?? '',
+  // ปลายทางแจ้งเตือนครู: LINE userId หรือ groupId (ครู/กลุ่มครู)
+  adminLineTarget: process.env.ADMIN_LINE_TARGET ?? '',
   teacher: {
     username: process.env.TEACHER_USERNAME ?? 'teacher',
     password: process.env.TEACHER_PASSWORD ?? 'teacher1234',
