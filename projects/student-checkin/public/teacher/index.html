@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ระบบเช็คอินนักเรียน — สำหรับครู</title>
+  <link rel="stylesheet" href="/shared/style.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+</head>
+<body>
+  <!-- Login -->
+  <section id="view-login" class="wrap">
+    <div class="card">
+      <h1>เข้าสู่ระบบครู</h1>
+      <p class="muted">จัดการพื้นที่เช็คอินและดูรายงาน</p>
+      <label>Username</label>
+      <input id="login-user" autocomplete="username" />
+      <label>Password</label>
+      <input id="login-pass" type="password" autocomplete="current-password" />
+      <button class="btn" id="btn-login">เข้าสู่ระบบ</button>
+      <div class="err" id="login-err"></div>
+    </div>
+  </section>
+
+  <!-- Dashboard -->
+  <section id="view-dash" class="wrap wide hidden">
+    <div class="topbar">
+      <h1>📊 ระบบเช็คอินนักเรียน</h1>
+      <div>
+        <span class="muted" id="dash-teacher"></span>
+        <button class="btn small secondary" id="btn-logout">ออกจากระบบ</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="row" style="margin-bottom:16px">
+      <button class="btn small secondary" id="tab-report">รายงานวันนี้</button>
+      <button class="btn small secondary" id="tab-zones">พื้นที่เช็คอิน</button>
+    </div>
+
+    <!-- Report panel -->
+    <div id="panel-report">
+      <div class="card">
+        <div class="topbar">
+          <h2 style="margin:0">รายงานเช็คอิน</h2>
+          <input type="date" id="report-date" style="width:auto" />
+        </div>
+        <div class="row" id="report-stats"></div>
+      </div>
+      <div class="card">
+        <div style="overflow-x:auto">
+          <table id="report-table">
+            <thead>
+              <tr>
+                <th>เลขที่</th><th>ชื่อ-สกุล</th><th>ชั้น</th>
+                <th>สถานะ</th><th>เวลา</th><th>ระยะ</th><th>ผู้ปกครอง</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Zones panel -->
+    <div id="panel-zones" class="hidden">
+      <div class="card">
+        <h2 id="zone-form-title">เพิ่มพื้นที่เช็คอินใหม่</h2>
+        <p class="muted">คลิกบนแผนที่เพื่อวางจุดศูนย์กลาง แล้วปรับรัศมี</p>
+        <div id="map"></div>
+        <div class="row" style="margin-top:14px">
+          <div>
+            <label>ชื่อพื้นที่</label>
+            <input id="zone-name" placeholder="เช่น หน้าโรงเรียน" />
+          </div>
+          <div style="flex:0 0 140px">
+            <label>รัศมี (เมตร)</label>
+            <input id="zone-radius" type="number" value="200" min="10" />
+          </div>
+        </div>
+        <div class="row">
+          <div><label>Latitude</label><input id="zone-lat" /></div>
+          <div><label>Longitude</label><input id="zone-lng" /></div>
+        </div>
+        <div class="row">
+          <button class="btn small secondary" id="btn-mylocation" style="flex:0 0 auto">📍 ใช้ตำแหน่งฉัน</button>
+          <button class="btn" id="btn-savezone">บันทึกพื้นที่</button>
+          <button class="btn small secondary hidden" id="btn-cancelzone" style="flex:0 0 auto">ยกเลิกแก้ไข</button>
+        </div>
+        <div class="err" id="zone-err"></div>
+      </div>
+
+      <div class="card">
+        <h2>พื้นที่ทั้งหมด</h2>
+        <div id="zone-list"></div>
+      </div>
+    </div>
+  </section>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script type="module" src="/teacher/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>เช็คอินก่อนกลับบ้าน</title>
+  <link rel="stylesheet" href="/shared/style.css" />
+</head>
+<body>
+  <div class="wrap">
+    <!-- Loading -->
+    <section id="view-loading" class="card center">
+      <div class="big-emoji">📍</div>
+      <h1>กำลังเชื่อมต่อ...</h1>
+      <p class="muted">กรุณารอสักครู่</p>
+    </section>
+
+    <!-- Mock login (เฉพาะโหมดทดสอบ ไม่มี LINE จริง) -->
+    <section id="view-mocklogin" class="card hidden">
+      <h1>เข้าสู่ระบบ (โหมดทดสอบ)</h1>
+      <p class="muted">ยังไม่ได้ตั้งค่า LINE จริง — จำลอง LINE user เพื่อทดสอบ flow</p>
+      <label>LINE User ID (สมมติ)</label>
+      <input id="mock-userid" placeholder="เช่น student001" />
+      <label>ชื่อที่แสดง</label>
+      <input id="mock-name" placeholder="เช่น เด็กชายเอ" />
+      <button class="btn" id="btn-mocklogin">เข้าสู่ระบบ</button>
+      <div class="err" id="mock-err"></div>
+    </section>
+
+    <!-- Register -->
+    <section id="view-register" class="card hidden">
+      <h1>ลงทะเบียนครั้งแรก</h1>
+      <p class="muted" id="register-hello"></p>
+      <label>เลขประจำตัวนักเรียน *</label>
+      <input id="reg-code" inputmode="numeric" placeholder="เช่น 12345" />
+      <label>ชื่อ - นามสกุล *</label>
+      <input id="reg-name" placeholder="เช่น สมชาย ใจดี" />
+      <label>ชั้น / ห้อง</label>
+      <input id="reg-class" placeholder="เช่น ม.3/1" />
+      <label>เบอร์โทรนักเรียน</label>
+      <input id="reg-phone" inputmode="tel" placeholder="08x-xxx-xxxx" />
+      <label>เบอร์โทรผู้ปกครอง</label>
+      <input id="reg-guardian" inputmode="tel" placeholder="08x-xxx-xxxx" />
+      <button class="btn" id="btn-register">บันทึกและเริ่มใช้งาน</button>
+      <div class="err" id="reg-err"></div>
+    </section>
+
+    <!-- Check-in -->
+    <section id="view-checkin" class="hidden">
+      <div class="card">
+        <div class="topbar">
+          <div>
+            <h1>เช็คอินก่อนกลับบ้าน</h1>
+            <p class="muted" id="checkin-hello"></p>
+          </div>
+          <button class="btn small secondary" id="btn-editprofile">แก้ไขข้อมูล</button>
+        </div>
+        <div id="checkin-result"></div>
+        <button class="btn" id="btn-checkin">📍 เช็คอินตำแหน่งปัจจุบัน</button>
+        <div class="err" id="checkin-err"></div>
+      </div>
+
+      <div class="card">
+        <h2>ประวัติเช็คอินล่าสุด</h2>
+        <div id="history"><p class="muted">—</p></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <script type="module" src="/student/app.js"></script>
+</body>
+</html>
