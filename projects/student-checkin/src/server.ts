@@ -1,6 +1,6 @@
 import express from 'express';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, sep } from 'node:path';
 import { config, MOCK_MODE } from './config.js';
 import './db/index.js'; // init schema
 import { ensureSeed } from './db/seed.js';
@@ -35,7 +35,21 @@ app.get('/api/health', (_req, res) => {
 
 // เสิร์ฟ frontend
 const publicDir = join(__dirname, '..', 'public');
-app.use(express.static(publicDir));
+app.use(
+  express.static(publicDir, {
+    etag: true,
+    lastModified: true,
+    setHeaders: (res, filePath) => {
+      // ไลบรารี vendored (leaflet) ไม่เปลี่ยน → cache ยาวได้
+      // ไฟล์แอปเอง (html/js/css) → บังคับ revalidate ทุกครั้ง กัน browser/LINE cache ของเก่า
+      if (filePath.includes(`${sep}vendor${sep}`)) {
+        res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+      } else {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    },
+  }),
+);
 app.get('/', (_req, res) => res.redirect('/student/'));
 
 app.listen(config.port, () => {
