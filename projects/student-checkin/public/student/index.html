@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-  <title>เช็คอินก่อนกลับบ้าน</title>
+  <title>ระบบเช็คอินนักเรียน</title>
   <link rel="stylesheet" href="/shared/style.css" />
 </head>
 <body>
-  <div class="wrap">
+  <div class="wrap" id="app-wrap">
     <!-- Loading -->
     <section id="view-loading" class="card center">
       <div class="big-emoji">📍</div>
@@ -15,10 +15,10 @@
       <p class="muted">กรุณารอสักครู่</p>
     </section>
 
-    <!-- Mock login (เฉพาะโหมดทดสอบ ไม่มี LINE จริง) -->
+    <!-- Mock login (เฉพาะโหมดทดสอบ) -->
     <section id="view-mocklogin" class="card hidden">
       <h1>เข้าสู่ระบบ (โหมดทดสอบ)</h1>
-      <p class="muted">ยังไม่ได้ตั้งค่า LINE จริง — จำลอง LINE user เพื่อทดสอบ flow</p>
+      <p class="muted">ยังไม่ได้ตั้งค่า LINE จริง — จำลอง LINE user เพื่อทดสอบ</p>
       <label>LINE User ID (สมมติ)</label>
       <input id="mock-userid" placeholder="เช่น student001" />
       <label>ชื่อที่แสดง</label>
@@ -29,7 +29,7 @@
 
     <!-- Register -->
     <section id="view-register" class="card hidden">
-      <h1>ลงทะเบียนครั้งแรก</h1>
+      <h1>ลงทะเบียน</h1>
       <p class="muted" id="register-hello"></p>
       <label>เลขประจำตัวนักเรียน *</label>
       <input id="reg-code" inputmode="numeric" placeholder="เช่น 12345" />
@@ -41,7 +41,8 @@
       <input id="reg-phone" inputmode="tel" placeholder="08x-xxx-xxxx" />
       <label>เบอร์โทรผู้ปกครอง</label>
       <input id="reg-guardian" inputmode="tel" placeholder="08x-xxx-xxxx" />
-      <button class="btn" id="btn-register">บันทึกและเริ่มใช้งาน</button>
+      <button class="btn" id="btn-register">บันทึก</button>
+      <button class="btn secondary hidden" id="btn-register-back">ยกเลิก</button>
       <div class="err" id="reg-err"></div>
     </section>
 
@@ -54,27 +55,73 @@
       <button class="btn secondary" id="btn-status-edit">แก้ไขข้อมูล</button>
     </section>
 
-    <!-- Check-in -->
-    <section id="view-checkin" class="hidden">
-      <div class="card">
-        <div class="topbar">
-          <div>
-            <h1>เช็คอินก่อนกลับบ้าน</h1>
-            <p class="muted" id="checkin-hello"></p>
-          </div>
-          <button class="btn small secondary" id="btn-editprofile">แก้ไขข้อมูล</button>
+    <!-- ===== Main app (แท็บ) ===== -->
+    <div id="view-app" class="hidden">
+      <!-- เช็คอิน -->
+      <section id="tab-checkin" class="tab-panel">
+        <div class="card">
+          <h1>เช็คอิน</h1>
+          <p class="muted" id="checkin-hello"></p>
+          <p class="muted">กดปุ่มด้านล่างเพื่อเช็คอินตำแหน่งปัจจุบันเมื่อครูแจ้ง</p>
+          <div id="checkin-result"></div>
+          <button class="btn" id="btn-checkin">📍 เช็คอินตำแหน่งปัจจุบัน</button>
+          <div class="err" id="checkin-err"></div>
         </div>
-        <div id="checkin-result"></div>
-        <button class="btn" id="btn-checkin">📍 เช็คอินตำแหน่งปัจจุบัน</button>
-        <div class="err" id="checkin-err"></div>
-      </div>
+        <div class="card">
+          <h2>ประวัติเช็คอินล่าสุด</h2>
+          <div id="history"><p class="muted">—</p></div>
+        </div>
+      </section>
 
-      <div class="card">
-        <h2>ประวัติเช็คอินล่าสุด</h2>
-        <div id="history"><p class="muted">—</p></div>
-      </div>
-    </section>
+      <!-- ข่าว -->
+      <section id="tab-news" class="tab-panel hidden">
+        <div class="card"><h1>ข่าวสาร</h1><p class="muted">ประกาศจากครู</p></div>
+        <div id="news-list"><p class="muted">—</p></div>
+      </section>
+
+      <!-- แจ้งลา -->
+      <section id="tab-leave" class="tab-panel hidden">
+        <div class="card">
+          <h1>แจ้งลา</h1>
+          <label>ประเภทการลา</label>
+          <select id="leave-type">
+            <option value="sick">ลาป่วย</option>
+            <option value="personal">ลากิจ</option>
+          </select>
+          <div class="row">
+            <div><label>ตั้งแต่วันที่</label><input id="leave-from" type="date" /></div>
+            <div><label>ถึงวันที่</label><input id="leave-to" type="date" /></div>
+          </div>
+          <label>เหตุผล</label>
+          <textarea id="leave-reason" rows="3" placeholder="ระบุเหตุผลการลา"></textarea>
+          <button class="btn" id="btn-leave">ส่งคำขอลา</button>
+          <div class="err" id="leave-err"></div>
+        </div>
+        <div class="card">
+          <h2>คำขอลาของฉัน</h2>
+          <div id="leave-list"><p class="muted">—</p></div>
+        </div>
+      </section>
+
+      <!-- บัญชี -->
+      <section id="tab-account" class="tab-panel hidden">
+        <div class="card">
+          <h1>บัญชีของฉัน</h1>
+          <div id="account-info"></div>
+          <button class="btn secondary" id="btn-account-edit">แก้ไขข้อมูล</button>
+          <button class="btn secondary" id="btn-logout">ออกจากระบบ</button>
+        </div>
+      </section>
+    </div>
   </div>
+
+  <!-- Bottom navigation -->
+  <nav id="bottom-nav" class="bottom-nav hidden">
+    <button data-tab="checkin"><span class="ico">📍</span>เช็คอิน</button>
+    <button data-tab="news"><span class="ico">📰</span>ข่าว</button>
+    <button data-tab="leave"><span class="ico">📝</span>แจ้งลา</button>
+    <button data-tab="account"><span class="ico">👤</span>บัญชี</button>
+  </nav>
 
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
   <script type="module" src="/student/app.js"></script>

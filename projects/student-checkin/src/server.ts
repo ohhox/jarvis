@@ -10,6 +10,8 @@ import { checkinRouter } from './routes/checkin.js';
 import { zonesRouter } from './routes/zones.js';
 import { reportsRouter } from './routes/reports.js';
 import { manageRouter } from './routes/manage.js';
+import { newsRouter } from './routes/news.js';
+import { leavesRouter } from './routes/leaves.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -24,6 +26,8 @@ app.use('/api/checkin', checkinRouter);
 app.use('/api/zones', zonesRouter);
 app.use('/api/reports', reportsRouter);
 app.use('/api/manage', manageRouter);
+app.use('/api/news', newsRouter);
+app.use('/api/leaves', leavesRouter);
 
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true, mockMode: MOCK_MODE });

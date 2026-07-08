@@ -38,10 +38,10 @@ document.getElementById('btn-logout').onclick = () => {
 };
 
 // ===== Tabs =====
-const PANELS = ['report', 'students', 'zones'];
-document.getElementById('tab-report').onclick = () => switchPanel('report');
-document.getElementById('tab-students').onclick = () => switchPanel('students');
-document.getElementById('tab-zones').onclick = () => switchPanel('zones');
+const PANELS = ['report', 'students', 'leaves', 'news', 'zones'];
+PANELS.forEach((p) => {
+  document.getElementById(`tab-${p}`).onclick = () => switchPanel(p);
+});
 
 function switchPanel(name) {
   for (const p of PANELS) {
@@ -50,6 +50,8 @@ function switchPanel(name) {
   }
   if (name === 'report') loadReport();
   if (name === 'students') { loadStudents(); loadNotifications(); }
+  if (name === 'leaves') loadLeavesAdmin();
+  if (name === 'news') loadNewsAdmin();
   if (name === 'zones') {
     initMap();
     loadZones();
@@ -64,6 +66,7 @@ function enterDash() {
   dateEl.onchange = loadReport;
   // แผนที่ถูก init แบบ lazy ตอนเปิดแท็บ "พื้นที่เช็คอิน" เพื่อไม่ให้บล็อกรายงาน
   refreshPendingBadge();
+  refreshLeaveBadge();
   switchPanel('report');
 }
 
@@ -592,6 +595,126 @@ function esc(v) {
   return String(v ?? '').replace(/[&<>"]/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c],
   );
+}
+
+// ===== คำขอลา (ครู) =====
+let leaveFilter = 'all';
+const LEAVE_LABEL = { sick: 'ลาป่วย', personal: 'ลากิจ' };
+const LEAVE_PILL = {
+  pending: '<span class="pill gray">รออนุมัติ</span>',
+  approved: '<span class="pill green">อนุมัติแล้ว</span>',
+  rejected: '<span class="pill red">ไม่อนุมัติ</span>',
+};
+function fmtDate(d) {
+  if (!d) return '-';
+  try { return new Date(d + 'T00:00:00').toLocaleDateString('th-TH', { dateStyle: 'medium' }); }
+  catch { return d; }
+}
+
+document.querySelectorAll('#panel-leaves [data-leavefilter]').forEach((b) => {
+  b.onclick = () => { leaveFilter = b.dataset.leavefilter; loadLeavesAdmin(); };
+});
+
+async function refreshLeaveBadge() {
+  try {
+    const { leaves } = await api('/leaves?status=pending', { tokenKey: TOKEN_KEY });
+    const badge = document.getElementById('tab-leave-badge');
+    badge.textContent = leaves.length;
+    badge.classList.toggle('hidden', leaves.length === 0);
+  } catch { /* ignore */ }
+}
+
+async function loadLeavesAdmin() {
+  const q = leaveFilter === 'all' ? '' : `?status=${leaveFilter}`;
+  let leaves;
+  try {
+    ({ leaves } = await api(`/leaves${q}`, { tokenKey: TOKEN_KEY }));
+  } catch (err) {
+    if (String(err.message).includes('unauthorized')) show('login');
+    return;
+  }
+  refreshLeaveBadge();
+  const el = document.getElementById('leaves-list');
+  if (!leaves.length) { el.innerHTML = '<p class="muted">ไม่มีคำขอลาในหมวดนี้</p>'; return; }
+  el.innerHTML = leaves.map((l) => {
+    const range = l.date_to !== l.date_from ? `${fmtDate(l.date_from)} – ${fmtDate(l.date_to)}` : fmtDate(l.date_from);
+    const note = l.status === 'rejected' && l.review_note
+      ? `<div class="muted" style="color:var(--red)">เหตุผล: ${esc(l.review_note)}</div>` : '';
+    const actions = l.status === 'pending'
+      ? `<button class="btn small" data-lapprove="${l.id}">อนุมัติ</button>
+         <button class="btn small danger" data-lreject="${l.id}">ไม่อนุมัติ</button>` : '';
+    return `<div class="student-card">
+      <div>
+        <div><strong>${esc(l.full_name)}</strong> ${esc(l.class_room) || ''} · เลขที่ ${esc(l.student_code)}</div>
+        <div>${LEAVE_LABEL[l.leave_type] || l.leave_type} · ${range} ${LEAVE_PILL[l.status]}</div>
+        ${l.reason ? `<div class="muted">${esc(l.reason)}</div>` : ''}${note}
+      </div>
+      <div class="actions">${actions}</div>
+    </div>`;
+  }).join('');
+
+  el.querySelectorAll('[data-lapprove]').forEach((b) => {
+    b.onclick = () => setLeaveStatus(Number(b.dataset.lapprove), 'approved');
+  });
+  el.querySelectorAll('[data-lreject]').forEach((b) => {
+    b.onclick = () => {
+      const note = prompt('เหตุผลที่ไม่อนุมัติ (นักเรียนจะเห็น):', '');
+      if (note === null) return;
+      setLeaveStatus(Number(b.dataset.lreject), 'rejected', note);
+    };
+  });
+}
+
+async function setLeaveStatus(id, status, note) {
+  await api(`/leaves/${id}/status`, { method: 'POST', body: { status, note }, tokenKey: TOKEN_KEY });
+  loadLeavesAdmin();
+}
+
+// ===== ข่าว (ครู) =====
+document.getElementById('btn-postnews').onclick = postNews;
+async function postNews() {
+  const errEl = document.getElementById('news-err');
+  errEl.textContent = '';
+  const body = {
+    title: document.getElementById('news-title').value.trim(),
+    body: document.getElementById('news-body').value.trim(),
+    pinned: document.getElementById('news-pinned').checked,
+  };
+  if (!body.title) return (errEl.textContent = 'กรุณากรอกหัวข้อข่าว');
+  try {
+    await api('/news', { method: 'POST', body, tokenKey: TOKEN_KEY });
+    document.getElementById('news-title').value = '';
+    document.getElementById('news-body').value = '';
+    document.getElementById('news-pinned').checked = false;
+    loadNewsAdmin();
+  } catch (err) {
+    errEl.textContent = err.message;
+  }
+}
+
+async function loadNewsAdmin() {
+  let news;
+  try {
+    ({ news } = await api('/news', { tokenKey: TOKEN_KEY }));
+  } catch { return; }
+  const el = document.getElementById('news-admin-list');
+  if (!news.length) { el.innerHTML = '<p class="muted">ยังไม่มีข่าว</p>'; return; }
+  el.innerHTML = news.map((n) => `
+    <div class="student-card">
+      <div>
+        <strong>${n.pinned ? '📌 ' : ''}${esc(n.title)}</strong>
+        <span class="muted" style="font-size:12px"> · ${fmtDateTime(n.created_at)}</span>
+        ${n.body ? `<div class="muted" style="white-space:pre-wrap">${esc(n.body)}</div>` : ''}
+      </div>
+      <div class="actions"><button class="btn small danger" data-delnews="${n.id}">ลบ</button></div>
+    </div>`).join('');
+  el.querySelectorAll('[data-delnews]').forEach((b) => {
+    b.onclick = async () => {
+      if (!confirm('ลบข่าวนี้?')) return;
+      await api(`/news/${b.dataset.delnews}`, { method: 'DELETE', tokenKey: TOKEN_KEY });
+      loadNewsAdmin();
+    };
+  });
 }
 
 // ===== Boot =====

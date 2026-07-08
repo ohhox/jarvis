@@ -95,7 +95,7 @@ checkinRouter.post('/', requireRole('student'), (req, res) => {
     zone: { id: best!.zone.id, name: best!.zone.name, radius_m: best!.zone.radius_m },
     checkin_id: info.lastInsertRowid,
     message: best!.inside
-      ? `เช็คอินสำเร็จ อยู่ในพื้นที่ "${best!.zone.name}" — กลับบ้านได้เลย`
+      ? `เช็คอินสำเร็จ อยู่ในพื้นที่ "${best!.zone.name}"`
       : `ยังไม่อยู่ในพื้นที่ที่กำหนด (ห่างจาก "${best!.zone.name}" ${distance_m} ม.)`,
   });
 });

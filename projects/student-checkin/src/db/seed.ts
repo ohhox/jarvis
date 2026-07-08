@@ -29,6 +29,15 @@ export function ensureSeed() {
     ).run('หน้าโรงเรียน (ตัวอย่าง)', 13.7649, 100.5383, 200);
     console.log('✅ สร้างพื้นที่เช็คอินตัวอย่าง 1 จุด');
   }
+
+  const newsCount = (db.prepare('SELECT COUNT(*) AS n FROM news').get() as { n: number }).n;
+  if (newsCount === 0) {
+    db.prepare('INSERT INTO news (title, body, pinned) VALUES (?, ?, 1)').run(
+      'ยินดีต้อนรับสู่ระบบเช็คอิน',
+      'เมื่อครูแจ้งให้เช็คอิน ให้กดแท็บ "เช็คอิน" แล้วกดปุ่มเช็คอินตำแหน่งปัจจุบัน · หากต้องการลา ใช้แท็บ "แจ้งลา"',
+    );
+    console.log('✅ สร้างข่าวตัวอย่าง 1 รายการ');
+  }
 }
 
 // รันตรง ๆ ด้วย `npm run seed`

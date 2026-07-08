@@ -38,6 +38,10 @@
       <button class="btn small secondary" id="tab-students">
         นักเรียน <span class="pill red hidden" id="tab-pending-badge">0</span>
       </button>
+      <button class="btn small secondary" id="tab-leaves">
+        คำขอลา <span class="pill red hidden" id="tab-leave-badge">0</span>
+      </button>
+      <button class="btn small secondary" id="tab-news">ข่าว</button>
       <button class="btn small secondary" id="tab-zones">พื้นที่เช็คอิน</button>
     </div>
 
@@ -105,6 +109,40 @@
           <button class="btn secondary" id="s-cancel">ยกเลิก</button>
           <button class="btn" id="s-save">บันทึก</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Leaves panel -->
+    <div id="panel-leaves" class="hidden">
+      <div class="card">
+        <h2 style="margin-bottom:12px">คำขอลาของนักเรียน</h2>
+        <div class="row" style="margin-bottom:8px">
+          <button class="btn small secondary" data-leavefilter="all">ทั้งหมด</button>
+          <button class="btn small secondary" data-leavefilter="pending">รออนุมัติ</button>
+          <button class="btn small secondary" data-leavefilter="approved">อนุมัติแล้ว</button>
+          <button class="btn small secondary" data-leavefilter="rejected">ไม่อนุมัติ</button>
+        </div>
+        <div id="leaves-list"></div>
+      </div>
+    </div>
+
+    <!-- News panel -->
+    <div id="panel-news" class="hidden">
+      <div class="card">
+        <h2 id="news-form-title">โพสต์ข่าวใหม่</h2>
+        <label>หัวข้อ</label>
+        <input id="news-title" placeholder="เช่น ประกาศเช็คอินวันนี้ 15:30" />
+        <label>รายละเอียด</label>
+        <textarea id="news-body" rows="4" placeholder="เนื้อหาข่าว"></textarea>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:12px">
+          <input type="checkbox" id="news-pinned" style="width:auto" /> ปักหมุดขึ้นบนสุด
+        </label>
+        <button class="btn" id="btn-postnews">โพสต์ข่าว</button>
+        <div class="err" id="news-err"></div>
+      </div>
+      <div class="card">
+        <h2>ข่าวทั้งหมด</h2>
+        <div id="news-admin-list"></div>
       </div>
     </div>
 

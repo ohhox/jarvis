@@ -54,6 +54,26 @@ db.exec(`
     full_name     TEXT NOT NULL DEFAULT ''
   );
 
+  CREATE TABLE IF NOT EXISTS news (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    title      TEXT NOT NULL,
+    body       TEXT NOT NULL DEFAULT '',
+    pinned     INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS leaves (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    student_id  INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+    leave_type  TEXT NOT NULL,               -- sick | personal
+    date_from   TEXT NOT NULL,               -- YYYY-MM-DD
+    date_to     TEXT NOT NULL,
+    reason      TEXT NOT NULL DEFAULT '',
+    status      TEXT NOT NULL DEFAULT 'pending',  -- pending | approved | rejected
+    review_note TEXT NOT NULL DEFAULT '',
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS notifications (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     target_type TEXT NOT NULL,               -- 'student' | 'admin'
@@ -65,6 +85,7 @@ db.exec(`
 
   CREATE INDEX IF NOT EXISTS idx_checkins_student ON checkins(student_id);
   CREATE INDEX IF NOT EXISTS idx_checkins_checked_at ON checkins(checked_at);
+  CREATE INDEX IF NOT EXISTS idx_leaves_student ON leaves(student_id);
 `);
 
 // ===== Migration: เพิ่มคอลัมน์ approval ให้ DB เก่าที่ยังไม่มี =====

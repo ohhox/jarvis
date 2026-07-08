@@ -47,6 +47,28 @@ export interface Teacher {
   full_name: string;
 }
 
+export interface News {
+  id: number;
+  title: string;
+  body: string;
+  pinned: number; // 0 | 1
+  created_at: string;
+}
+
+export type LeaveType = 'sick' | 'personal';
+
+export interface Leave {
+  id: number;
+  student_id: number;
+  leave_type: LeaveType;
+  date_from: string;
+  date_to: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  review_note: string;
+  created_at: string;
+}
+
 // payload ที่ฝังใน token
 export interface TokenPayload {
   role: 'student' | 'teacher';

@@ -28,3 +28,11 @@ export function requireRole(role: 'student' | 'teacher') {
     next();
   };
 }
+
+/** อนุญาตทั้งครูและนักเรียน (มี token ที่ถูกต้องก็พอ) */
+export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  const payload = verifyToken(extractToken(req));
+  if (!payload) return res.status(401).json({ error: 'unauthorized' });
+  req.auth = payload;
+  next();
+}
